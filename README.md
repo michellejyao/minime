@@ -1,4 +1,4 @@
-# MiniMe � Ditto
+# MiniMe
 
 **An AI that actually remembers you.** Ditto is your digital twin: it speaks as you, thinks from your experiences, and stays consistent across every conversation because it's grounded in a **persistent, searchable memory** of your life, not a fading chat window.
 
