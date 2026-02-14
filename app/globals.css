@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer base {
+  :root {
+    /* Ditto theme: #FFFFFF, #efbbff, #d896ff, #660066 */
+    --background: 0 0% 100%;
+    --foreground: 300 100% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 300 100% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 300 100% 10%;
+    --primary: 300 100% 20%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 286 100% 87%;
+    --secondary-foreground: 300 100% 20%;
+    --muted: 286 100% 94%;
+    --muted-foreground: 300 30% 40%;
+    --accent: 276 100% 79%;
+    --accent-foreground: 300 100% 20%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 286 60% 90%;
+    --input: 286 60% 90%;
+    --ring: 300 100% 20%;
+    --chart-1: 300 100% 20%;
+    --chart-2: 276 100% 79%;
+    --chart-3: 286 100% 87%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.75rem;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 300 100% 20%;
+    --sidebar-primary: 300 100% 20%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 286 100% 95%;
+    --sidebar-accent-foreground: 300 100% 10%;
+    --sidebar-border: 286 60% 91%;
+    --sidebar-ring: 300 100% 20%;
+    --twin-bubble: 286 100% 98%;
+    --user-bubble: 300 100% 20%;
+    --memory-card: 286 100% 97%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}

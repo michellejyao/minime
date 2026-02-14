@@ -1,0 +1,31 @@
+# v0 runtime files (should only exist in preview, not in git)
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+
+# Environment / secrets (never commit)
+.env
+.env.local
+.env*.local
+!.env.local.example
+!.env.example
+
+# Python
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Common ignores
+node_modules/
+.next/
+.DS_Store
+*.log

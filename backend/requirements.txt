@@ -1,0 +1,13 @@
+# Digital Twin AI Backend
+fastapi>=0.115.0,<0.116
+uvicorn[standard]>=0.32.0,<0.33
+python-multipart>=0.0.9
+sqlalchemy>=2.0.36,<3.0
+asyncpg>=0.30.0,<0.31
+pgvector>=0.3.6,<0.4
+pydantic>=2.10.0,<3.0
+pydantic-settings>=2.6.0,<3.0
+openai>=1.55.0,<2.0
+tiktoken>=0.8.0,<0.9
+python-dotenv>=1.0.0,<2.0
+elevenlabs>=1.0.0,<2.0
