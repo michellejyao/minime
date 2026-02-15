@@ -29,6 +29,11 @@ class Memory(Base):
         DateTime(timezone=True),
         server_default=func.now(),
     )
+    # When the experience/event actually happened (optional; distinct from created_at).
+    occurred_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
     chunks: Mapped[list["MemoryChunk"]] = relationship(
         "MemoryChunk",

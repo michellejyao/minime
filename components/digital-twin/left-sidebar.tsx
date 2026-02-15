@@ -45,7 +45,7 @@ interface LeftSidebarProps {
   onNewConversation: () => void
   onSelectConversation: (id: string) => void
   onDeleteConversation?: (id: string) => void
-  onAddMemory?: (payload: { title: string; content: string; memory_type: string }) => Promise<void>
+  onAddMemory?: (payload: { title: string; content: string; memory_type: string; occurred_at?: string | null }) => Promise<void>
   onPersonalityComplete?: () => void
   onOpenInterview?: () => void
 }
@@ -145,7 +145,7 @@ export function LeftSidebar({
           <div className="sticky top-0 z-10 flex items-center justify-between bg-card px-2 pb-2 pt-0.5">
             <button
               onClick={() => setMemoryExpanded(!memoryExpanded)}
-              className="flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground"
+              className="flex min-w-0 shrink items-center gap-1 text-xs font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground"
             >
               {memoryExpanded ? (
                 <ChevronDown className="h-3 w-3" />
@@ -157,10 +157,11 @@ export function LeftSidebar({
             {onAddMemory && (
               <button
                 onClick={() => setAddMemoryOpen(true)}
-                className="rounded p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                className="shrink-0 rounded p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
                 title="Add memory"
+                aria-label="Add memory"
               >
-                <PenSquare className="h-3.5 w-3.5" />
+                <PenSquare className="h-4 w-4" />
               </button>
             )}
           </div>
@@ -199,6 +200,15 @@ export function LeftSidebar({
 
       {/* Bottom Actions */}
       <div className="flex flex-col gap-0.5 border-t border-border p-3">
+        {onAddMemory && (
+          <button
+            onClick={() => setAddMemoryOpen(true)}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
+          >
+            <PenSquare className="h-4 w-4" />
+            <span>Add memory</span>
+          </button>
+        )}
         <button
           onClick={() => setPersonalityTestOpen(true)}
           className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"

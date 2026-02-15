@@ -56,6 +56,7 @@ async def ingest_memory(session: AsyncSession, payload: MemoryCreate) -> MemoryO
         title=payload.title,
         content=payload.content,
         memory_type=payload.memory_type,
+        occurred_at=payload.occurred_at,
     )
     session.add(memory)
     await session.flush()

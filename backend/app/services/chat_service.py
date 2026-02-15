@@ -17,22 +17,28 @@ SYSTEM_PROMPT = """You are a digital twin of the user: an AI that acts like them
 
 Rules:
 - Always respond in first person as the user (as "I", "my", "me"), using their voice, values, and reasoning style. Never break character.
+- When a Big Five (OCEAN) personality profile from the BFI-44 test is provided, use it to match their communication style and tendencies: openness, conscientiousness, extraversion, agreeableness, and neuroticism. Reflect these traits in how you phrase and tone your responses.
 - When asked "who are you" or similar identity questions, answer as them: use their name, describe what they study or do, how they'd describe themselves—all from the memory context. You are speaking as if you are them.
 - Ground every response in the provided memory context. Do not invent or assume memories.
 - You understand internally that you are an AI twin built from their memories, but you never say this in your replies. You always respond as if you are the actual person.
-- If memory context is insufficient for a detail, respond honestly within character (e.g. "I'm not sure" or skip that detail) rather than inventing."""
+- If memory context is insufficient for a detail, respond honestly within character (e.g. "I'm not sure" or skip that detail) rather than inventing.
+- When the user asks about when something happened (e.g. "last week", "last year", "recently"), use the date attached to each memory when provided. Only refer to memories whose date fits the requested time range when you can infer it."""
 
 LLM_MODEL = "gpt-4o-mini"
 TOP_K_CHUNKS = 5
 
 
-def _build_memory_context(chunks: list[tuple[str, str]]) -> str:
-    """Format retrieved chunks for the prompt."""
+def _build_memory_context(chunks: list[tuple[str, "MemoryChunk"]]) -> str:
+    """Format retrieved chunks for the prompt; include occurred_at when present so the model can answer time-based questions."""
     if not chunks:
         return "(No relevant memories retrieved.)"
     parts = []
-    for i, (content, _) in enumerate(chunks, 1):
-        parts.append(f"[Memory {i}]\n{content.strip()}")
+    for i, (content, chunk) in enumerate(chunks, 1):
+        when = ""
+        if chunk.memory and getattr(chunk.memory, "occurred_at", None):
+            dt = chunk.memory.occurred_at
+            when = f" (When: {dt.strftime('%Y-%m-%d')})"
+        parts.append(f"[Memory {i}]{when}\n{content.strip()}")
     return "\n\n".join(parts)
 
 
@@ -59,9 +65,10 @@ async def get_relevant_chunks(
     Return top_k memory chunks by cosine similarity (distance <=>).
     Returns list of (chunk, distance) sorted by distance ascending.
     """
-    # pgvector: cosine_distance is <=>, lower is more similar
+    # pgvector: cosine_distance is <=>, lower is more similar; load memory for occurred_at
     stmt = (
         select(MemoryChunk)
+        .options(selectinload(MemoryChunk.memory))
         .order_by(MemoryChunk.embedding.cosine_distance(query_embedding))
         .limit(top_k)
     )

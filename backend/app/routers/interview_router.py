@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -129,9 +129,19 @@ async def submit_answer_speech(
     session_id: UUID,
     question_id: UUID,
     audio: UploadFile = File(...),
+    voice_option: str = Form("female"),
     session: AsyncSession = Depends(get_db),
 ) -> InterviewFeedbackResponse:
-    """Upload audio of your answer; it is transcribed, then analyzed with memory context."""
+    """
+    Upload audio of your answer. It is transcribed, analyzed with memory context,
+    then the improved answer is spoken back in the chosen voice.
+    voice_option: "female" | "male" | "neutral" | "clone"
+    """
+    import base64
+    import logging
+
+    logger = logging.getLogger(__name__)
+
     content = await audio.read()
     if not content:
         raise HTTPException(status_code=400, detail="Empty audio file")
@@ -142,7 +152,7 @@ async def submit_answer_speech(
             status_code=400, detail="Could not transcribe audio; check format (e.g. webm, mp3, wav)."
         )
     try:
-        return await interview_service.submit_answer(
+        result = await interview_service.submit_answer(
             session,
             session_id,
             question_id,
@@ -151,6 +161,38 @@ async def submit_answer_speech(
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+    # Normalize voice option; default to female if invalid
+    option = (voice_option or "female").strip().lower()
+    if option not in ("female", "male", "neutral", "clone"):
+        option = "female"
+
+    improved_audio_base64: str | None = None
+    improved_audio_error: str | None = None
+    if result.improved_answer:
+        try:
+            audio_bytes, fallback_msg = await voice_service.text_to_speech_for_interview(
+                result.improved_answer,
+                voice_option=option,
+                audio_bytes=content if option == "clone" else None,
+            )
+            improved_audio_base64 = base64.b64encode(audio_bytes).decode("ascii")
+            improved_audio_error = fallback_msg
+        except ValueError as e:
+            improved_audio_error = "ElevenLabs not configured. Add ELEVENLABS_API_KEY to .env."
+            logger.warning("Interview voice: %s", e)
+        except Exception as e:
+            improved_audio_error = str(e)[:200]
+            logger.exception("Interview TTS failed")
+
+    return InterviewFeedbackResponse(
+        answer_id=result.answer_id,
+        feedback=result.feedback,
+        improved_answer=result.improved_answer,
+        retrieved_memory_count=result.retrieved_memory_count,
+        improved_audio_base64=improved_audio_base64,
+        improved_audio_error=improved_audio_error,
+    )
 
 
 @router.get("/answers/{answer_id}", response_model=InterviewAnswerOut)

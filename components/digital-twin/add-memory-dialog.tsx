@@ -33,7 +33,7 @@ const MEMORY_TYPES = [
 interface AddMemoryDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (payload: { title: string; content: string; memory_type: string }) => Promise<void>
+  onSubmit: (payload: { title: string; content: string; memory_type: string; occurred_at?: string | null }) => Promise<void>
 }
 
 export function AddMemoryDialog({
@@ -44,6 +44,7 @@ export function AddMemoryDialog({
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
   const [memoryType, setMemoryType] = useState("experience")
+  const [occurredAt, setOccurredAt] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -56,10 +57,16 @@ export function AddMemoryDialog({
     }
     setIsSubmitting(true)
     try {
-      await onSubmit({ title: title.trim(), content: content.trim(), memory_type: memoryType })
+      await onSubmit({
+        title: title.trim(),
+        content: content.trim(),
+        memory_type: memoryType,
+        occurred_at: occurredAt.trim() || undefined,
+      })
       setTitle("")
       setContent("")
       setMemoryType("experience")
+      setOccurredAt("")
       onOpenChange(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add memory.")
@@ -120,6 +127,19 @@ export function AddMemoryDialog({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="occurred_at">When it happened (optional)</Label>
+            <Input
+              id="occurred_at"
+              type="date"
+              value={occurredAt}
+              onChange={(e) => setOccurredAt(e.target.value)}
+              className="w-full"
+            />
+            <p className="text-xs text-muted-foreground">
+              Add a date so Ditto can answer questions like &quot;what happened last week?&quot;
+            </p>
           </div>
           {error && (
             <p className="text-sm text-destructive">{error}</p>

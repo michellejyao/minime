@@ -9,26 +9,22 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import {
   createInterviewSession,
-  getInterviewQuestions,
   generateInterviewQuestions,
   addInterviewQuestion,
-  submitInterviewAnswerText,
   submitInterviewAnswerSpeech,
-  getInterviewImprovedAudio,
   type InterviewSessionOut,
   type InterviewQuestionOut,
   type InterviewFeedbackResponse,
+  type InterviewVoiceOption,
 } from "@/lib/api"
 import { toast } from "sonner"
 import {
   Mic,
-  Send,
   Sparkles,
   Plus,
   Volume2,
@@ -50,36 +46,19 @@ export function InterviewPanel({ open, onOpenChange }: InterviewPanelProps) {
   const [customQuestionText, setCustomQuestionText] = useState("")
   const [addingQuestion, setAddingQuestion] = useState(false)
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null)
-  const [answerText, setAnswerText] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [feedback, setFeedback] = useState<InterviewFeedbackResponse | null>(null)
   const [playingAudio, setPlayingAudio] = useState(false)
   const [recording, setRecording] = useState(false)
+  const [voiceOption, setVoiceOption] = useState<InterviewVoiceOption>("female")
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
-
-  const fetchQuestions = useCallback(
-    async (sid: string) => {
-      setLoadingQuestions(true)
-      try {
-        const list = await getInterviewQuestions(sid)
-        setQuestions(list)
-      } catch (e) {
-        toast.error("Failed to load questions", {
-          description: e instanceof Error ? e.message : "Unknown error",
-        })
-      } finally {
-        setLoadingQuestions(false)
-      }
-    },
-    []
-  )
+  const improvedAudioRef = useRef<HTMLAudioElement | null>(null)
 
   const handleStartSession = useCallback(async () => {
     setLoadingSession(true)
     setFeedback(null)
     setSelectedQuestionId(null)
-    setAnswerText("")
     try {
       const s = await createInterviewSession()
       setSession(s)
@@ -131,27 +110,6 @@ export function InterviewPanel({ open, onOpenChange }: InterviewPanelProps) {
     }
   }, [session, customQuestionText])
 
-  const handleSubmitTextAnswer = useCallback(async () => {
-    if (!session || !selectedQuestionId || !answerText.trim()) return
-    setSubmitting(true)
-    setFeedback(null)
-    try {
-      const result = await submitInterviewAnswerText(
-        session.id,
-        selectedQuestionId,
-        answerText.trim()
-      )
-      setFeedback(result)
-      toast.success("Feedback ready")
-    } catch (e) {
-      toast.error("Failed to submit answer", {
-        description: e instanceof Error ? e.message : "Unknown error",
-      })
-    } finally {
-      setSubmitting(false)
-    }
-  }, [session, selectedQuestionId, answerText])
-
   const handleSubmitSpeechAnswer = useCallback(
     async (audioBlob: Blob) => {
       if (!session || !selectedQuestionId) return
@@ -164,10 +122,10 @@ export function InterviewPanel({ open, onOpenChange }: InterviewPanelProps) {
         const result = await submitInterviewAnswerSpeech(
           session.id,
           selectedQuestionId,
-          file
+          file,
+          voiceOption
         )
         setFeedback(result)
-        setAnswerText("") // optional: could set transcribed text
         toast.success("Feedback ready")
       } catch (e) {
         toast.error("Failed to submit audio", {
@@ -177,7 +135,7 @@ export function InterviewPanel({ open, onOpenChange }: InterviewPanelProps) {
         setSubmitting(false)
       }
     },
-    [session, selectedQuestionId]
+    [session, selectedQuestionId, voiceOption]
   )
 
   const startRecording = useCallback(() => {
@@ -212,29 +170,38 @@ export function InterviewPanel({ open, onOpenChange }: InterviewPanelProps) {
     setRecording(false)
   }, [])
 
-  const handlePlayImproved = useCallback(async () => {
-    if (!feedback?.answer_id) return
+  const handlePlayImproved = useCallback(() => {
+    if (!feedback?.improved_audio_base64) return
     setPlayingAudio(true)
     try {
-      const blob = await getInterviewImprovedAudio(feedback.answer_id)
+      // Strip whitespace/newlines that can come from JSON
+      const base64 = feedback.improved_audio_base64.replace(/\s/g, "")
+      const binary = atob(base64)
+      const bytes = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+      const blob = new Blob([bytes], { type: "audio/mpeg" })
       const url = URL.createObjectURL(blob)
       const audio = new Audio(url)
-      audio.onended = () => {
+      improvedAudioRef.current = audio
+      const cleanup = () => {
         URL.revokeObjectURL(url)
+        improvedAudioRef.current = null
         setPlayingAudio(false)
       }
+      audio.onended = cleanup
       audio.onerror = () => {
-        URL.revokeObjectURL(url)
-        setPlayingAudio(false)
+        toast.error("Audio playback failed")
+        cleanup()
       }
-      await audio.play()
-    } catch (e) {
-      toast.error("Could not play audio", {
-        description: e instanceof Error ? e.message : "ElevenLabs may not be configured.",
+      audio.play()?.catch((e) => {
+        toast.error("Could not play audio. Try clicking the button again.")
+        cleanup()
       })
+    } catch (e) {
+      toast.error("Could not decode audio")
       setPlayingAudio(false)
     }
-  }, [feedback?.answer_id])
+  }, [feedback?.improved_audio_base64])
 
   const selectedQuestion = questions.find((q) => q.id === selectedQuestionId)
 
@@ -250,7 +217,7 @@ export function InterviewPanel({ open, onOpenChange }: InterviewPanelProps) {
             Interview Mode
           </SheetTitle>
           <SheetDescription>
-            Practice with questions from your memories. Answer by text or voice and get feedback plus an improved answer in your cloned voice.
+            Practice with questions from your memories. Answer by voice only; your recording is used to clone your voice and read back the improved answer.
           </SheetDescription>
         </SheetHeader>
 
@@ -328,7 +295,6 @@ export function InterviewPanel({ open, onOpenChange }: InterviewPanelProps) {
                           onClick={() => {
                             setSelectedQuestionId(q.id)
                             setFeedback(null)
-                            setAnswerText("")
                           }}
                           className={cn(
                             "rounded-lg border p-3 text-left text-sm transition-colors",
@@ -350,46 +316,55 @@ export function InterviewPanel({ open, onOpenChange }: InterviewPanelProps) {
                       {selectedQuestion.question_text}
                     </p>
                     <div className="space-y-2">
-                      <Label>Your answer (text or record below)</Label>
-                      <Textarea
-                        placeholder="Type your answer here..."
-                        value={answerText}
-                        onChange={(e) => setAnswerText(e.target.value)}
-                        rows={4}
-                        className="resize-none"
-                      />
+                      <Label>Hear improved answer in</Label>
                       <div className="flex flex-wrap gap-2">
-                        <Button
-                          onClick={handleSubmitTextAnswer}
-                          disabled={!answerText.trim() || submitting}
-                        >
-                          {submitting ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <>
-                              <Send className="h-4 w-4" />
-                              Submit text answer
-                            </>
-                          )}
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          onClick={recording ? stopRecording : startRecording}
-                          disabled={submitting}
-                        >
-                          {recording ? (
-                            <>
-                              <span className="mr-1 h-2 w-2 animate-pulse rounded-full bg-red-500" />
-                              Stop & submit
-                            </>
-                          ) : (
-                            <>
-                              <Mic className="h-4 w-4" />
-                              Answer by voice
-                            </>
-                          )}
-                        </Button>
+                        {(
+                          [
+                            { value: "female" as const, label: "Female" },
+                            { value: "male" as const, label: "Male" },
+                            { value: "neutral" as const, label: "Gender neutral" },
+                            { value: "clone" as const, label: "My cloned voice" },
+                          ] as const
+                        ).map(({ value, label }) => (
+                          <Button
+                            key={value}
+                            type="button"
+                            variant={voiceOption === value ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setVoiceOption(value)}
+                          >
+                            {label}
+                          </Button>
+                        ))}
                       </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Answer by voice</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Tap the button below, then speak your answer. The improved answer will be read back in the voice you chose above.
+                      </p>
+                      <Button
+                        className="w-full"
+                        onClick={recording ? stopRecording : startRecording}
+                        disabled={submitting}
+                      >
+                        {submitting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Transcribing & analyzing…
+                          </>
+                        ) : recording ? (
+                          <>
+                            <span className="mr-1 h-2 w-2 animate-pulse rounded-full bg-red-500" />
+                            Stop & submit
+                          </>
+                        ) : (
+                          <>
+                            <Mic className="h-4 w-4" />
+                            Record answer
+                          </>
+                        )}
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -405,22 +380,28 @@ export function InterviewPanel({ open, onOpenChange }: InterviewPanelProps) {
                       <p className="whitespace-pre-wrap text-sm">
                         {feedback.improved_answer}
                       </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-2"
-                        onClick={handlePlayImproved}
-                        disabled={playingAudio}
-                      >
-                        {playingAudio ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            <Volume2 className="h-4 w-4" />
-                            Play in my voice
-                          </>
-                        )}
-                      </Button>
+                      {feedback.improved_audio_base64 ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                          onClick={handlePlayImproved}
+                          disabled={playingAudio}
+                        >
+                          {playingAudio ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Volume2 className="h-4 w-4" />
+                              Play in my voice
+                            </>
+                          )}
+                        </Button>
+                      ) : feedback.improved_audio_error ? (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Voice playback unavailable: {feedback.improved_audio_error}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 )}

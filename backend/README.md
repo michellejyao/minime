@@ -41,6 +41,7 @@ Production-grade backend for a Digital Twin AI: persistent identity with memory 
      - Change `postgresql://` to `postgresql+asyncpg://`.
      - **Replace `[YOUR-PASSWORD]`** with your real database password (no square brackets).
      - If you see "Not IPv4 compatible", use the **Session Pooler** (or "Pooler settings") URI instead of the direct URI—the pooler host works over IPv4.
+   - `ELEVENLABS_API_KEY` — for Interview Mode voice (female/male/neutral/clone).
 
 4. **Enable pgvector in Supabase** (if not already)
 
@@ -63,7 +64,7 @@ Production-grade backend for a Digital Twin AI: persistent identity with memory 
 
 ## API
 
-   - **POST /memory** — Ingest a memory (title, content, memory_type). Content is chunked (~300–500 tokens), embedded with `text-embedding-3-small`, and stored in `memories` and `memory_chunks`.
+   - **POST /memory** — Ingest a memory (title, content, memory_type, optional occurred_at). Content is chunked (~300–500 tokens), embedded with `text-embedding-3-small`, and stored in `memories` and `memory_chunks`. Use `occurred_at` so Ditto can answer time-based questions (e.g. "what happened last week?").
    - **POST /chat** — Send a message; backend embeds it, retrieves top 5 chunks by cosine similarity, and returns an OpenAI-generated response plus the retrieved memories.
 
 ## Troubleshooting
@@ -103,8 +104,10 @@ backend/
 
 Tables are created on startup via `init_db()`:
 
-- `memories` — one row per ingested memory
+- `memories` — one row per ingested memory (includes optional `occurred_at` for when the experience happened)
 - `memory_chunks` — chunks with `embedding` (pgvector); HNSW index for cosine similarity
 - `conversations` / `messages` — for future conversation history
+
+**Existing databases:** If you already have a `memories` table, run the migration in `migrations/add_memory_occurred_at.sql` (e.g. in Supabase SQL Editor) to add the `occurred_at` column.
 
 Vector search uses pgvector cosine distance: `ORDER BY embedding <=> query_embedding` (top 5 chunks).

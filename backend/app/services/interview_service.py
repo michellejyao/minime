@@ -29,13 +29,17 @@ TOP_K_CHUNKS = 5
 DEFAULT_QUESTIONS_FROM_MEMORIES = 5
 
 
-def _build_memory_context(chunks: list[tuple[str, str]]) -> str:
-    """Format retrieved chunks for prompts."""
+def _build_memory_context(chunks: list[tuple[str, "MemoryChunk"]]) -> str:
+    """Format retrieved chunks for prompts; include occurred_at when present."""
     if not chunks:
         return "(No relevant memories retrieved.)"
     parts = []
-    for i, (content, _) in enumerate(chunks, 1):
-        parts.append(f"[Memory {i}]\n{content.strip()}")
+    for i, (content, chunk) in enumerate(chunks, 1):
+        when = ""
+        if chunk.memory and getattr(chunk.memory, "occurred_at", None):
+            dt = chunk.memory.occurred_at
+            when = f" (When: {dt.strftime('%Y-%m-%d')})"
+        parts.append(f"[Memory {i}]{when}\n{content.strip()}")
     return "\n\n".join(parts)
 
 

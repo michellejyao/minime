@@ -15,6 +15,7 @@ class MemoryCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=512)
     content: str = Field(..., min_length=1)
     memory_type: str = Field(..., min_length=1, max_length=128)
+    occurred_at: datetime | None = None  # When the experience/event actually happened
 
 
 class MemoryChunkOut(BaseModel):
@@ -36,6 +37,7 @@ class MemoryOut(BaseModel):
     content: str
     memory_type: str
     created_at: datetime
+    occurred_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -155,3 +157,7 @@ class InterviewFeedbackResponse(BaseModel):
     feedback: str
     improved_answer: str
     retrieved_memory_count: int
+    # When submitted via speech: improved answer TTS in user's cloned voice (base64 MP3)
+    improved_audio_base64: str | None = None
+    # If voice clone/TTS failed, a short error message for the UI
+    improved_audio_error: str | None = None

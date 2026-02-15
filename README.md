@@ -55,12 +55,26 @@ So: **full vector retrieval over a dedicated personal memory DB**, every time no
 
 The frontend (Next.js) talks to this API, shows the chat and retrieved memories, and can capture memories and run the personality (BFI) flow so Ditto can mirror your style and tendencies as well as your facts.
 
+### Interview Mode
+
+Ditto can double as an **interview coach** that uses your memory store to make practice realistic. In Interview Mode you:
+
+1. **Start a session** ? Creates a new practice session (stored in the DB).
+2. **Get questions from your life** ? The backend runs vector retrieval over your memories with a generic query, then uses the LLM to generate **behavioral and situational questions** (e.g. ?Tell me about a time you??) that you can actually answer from those memories. You can also add custom questions.
+3. **Answer by text or voice** ? Submit your answer as text, or record and upload audio; the backend transcribes it with **OpenAI Whisper** and runs the same analysis.
+4. **Get coached** ? For each answer, the backend retrieves the **top 5 memory chunks** relevant to the question, then sends the question + your answer + that memory context to the LLM with an **interview-coach prompt**. You get:
+   - **Structured feedback** (clarity, use of examples, gaps).
+   - An **improved version** of your answer in first person, grounded in your memories and kept interview-appropriate.
+5. **Hear the improved answer** (optional) ? The improved answer can be turned into speech via **ElevenLabs** (premade female/male/neutral voices or your own cloned voice if configured). You can listen and compare to your original.
+
+So Interview Mode reuses the same RAG pipeline (embeddings + pgvector + retrieval) and your stored identity so practice questions and feedback are always aligned with your real experiences.
+
 ---
 
 ## Repo layout
 
 - **`backend/`**: FastAPI app, embedding + memory + chat services, pgvector models. See **[backend/README.md](backend/README.md)** for setup, env vars, and API details.
-- **`app/`**, **`components/`**: Next.js app and UI (chat, sidebar, personality, etc.).
+- **`app/`**, **`components/`**: Next.js app and UI (chat, sidebar, personality, interview mode).
 
 ---
 

@@ -74,7 +74,7 @@ export default function DigitalTwinPage() {
   }, [fetchConversations])
 
   const handleAddMemory = useCallback(
-    async (payload: { title: string; content: string; memory_type: string }) => {
+    async (payload: { title: string; content: string; memory_type: string; occurred_at?: string | null }) => {
       await addMemory(payload)
       toast.success("Memory added", { description: `"${payload.title}" has been saved.` })
       fetchMemories()

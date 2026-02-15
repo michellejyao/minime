@@ -34,12 +34,16 @@ export interface MemoryOut {
   content: string
   memory_type: string
   created_at: string
+  /** When the experience/event actually happened (optional). */
+  occurred_at?: string | null
 }
 
 export interface MemoryCreate {
   title: string
   content: string
   memory_type: string
+  /** When the experience/event actually happened (optional). ISO date or datetime string. */
+  occurred_at?: string | null
 }
 
 export interface RetrievedMemory {
@@ -186,6 +190,10 @@ export interface InterviewFeedbackResponse {
   feedback: string
   improved_answer: string
   retrieved_memory_count: number
+  /** When submitted via speech: improved answer TTS in user's cloned voice (base64 MP3). */
+  improved_audio_base64?: string | null
+  /** If voice clone/TTS failed, message for the UI. */
+  improved_audio_error?: string | null
 }
 
 export interface InterviewAnswerOut {
@@ -259,15 +267,19 @@ export async function submitInterviewAnswerText(
   )
 }
 
+export type InterviewVoiceOption = "female" | "male" | "neutral" | "clone"
+
 /** Submit an audio answer (multipart); returns feedback and improved answer. */
 export async function submitInterviewAnswerSpeech(
   sessionId: string,
   questionId: string,
-  audioFile: File
+  audioFile: File,
+  voiceOption: InterviewVoiceOption = "female"
 ): Promise<InterviewFeedbackResponse> {
   const url = `${API_BASE}/interview/sessions/${sessionId}/questions/${questionId}/answer/speech`
   const form = new FormData()
   form.append("audio", audioFile)
+  form.append("voice_option", voiceOption)
   const res = await fetch(url, {
     method: "POST",
     body: form,
